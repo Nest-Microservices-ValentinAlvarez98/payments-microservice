@@ -6,9 +6,15 @@ interface EnvVars {
 
       PORT: number
 
-      API_KEY_TESTING: string
+      API_KEY: string
+      SECRET_KEY: string
 
-      SECRET_KEY_TESTING: string
+      CREATE_PAYMENT_SESSION_URL: string
+      GET_PAYMENT_URL: string
+
+      SUCCESS_URL: string
+      BACK_URL: string
+      NOTIFICATION_URL: string
 
 }
 
@@ -16,9 +22,15 @@ const envsSchema = joi.object({
 
       PORT: joi.number().required(),
 
-      API_KEY_TESTING: joi.string().required(),
+      API_KEY: joi.string().required(),
+      SECRET_KEY: joi.string().required(),
 
-      SECRET_KEY_TESTING: joi.string().required()
+      CREATE_PAYMENT_SESSION_URL: joi.string().required(),
+      GET_PAYMENT_URL: joi.string().required(),
+
+      SUCCESS_URL: joi.string().required(),
+      BACK_URL: joi.string().required(),
+      NOTIFICATION_URL: joi.string().required()
 
 }).unknown(true)
 
@@ -36,8 +48,14 @@ export const envs = {
 
       port: envVars.PORT,
 
-      apiKey: envVars.API_KEY_TESTING,
+      apiKey: envVars.API_KEY,
+      secretKey: envVars.SECRET_KEY,
 
-      secretKey: envVars.SECRET_KEY_TESTING,
+      createPaymentSessionUrl: envVars.CREATE_PAYMENT_SESSION_URL,
+      getPaymentUrl: envVars.GET_PAYMENT_URL,
+
+      successUrl: envVars.SUCCESS_URL,
+      backUrl: envVars.BACK_URL,
+      notificationUrl: envVars.NOTIFICATION_URL
 
 }

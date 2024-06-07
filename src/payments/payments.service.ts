@@ -11,12 +11,12 @@ export class PaymentsService {
 
             const paymentSession: PaymentSession = {
                   ...createPaymentDto,
-                  success_url: 'http://localhost:3003/api/payments/success',
-                  back_url: 'http://localhost:3003/api/payments/cancelled',
-                  notification_url: 'https://hkdk.events/kzmguii07bfjfa'
+                  success_url: envs.successUrl,
+                  back_url: envs.backUrl,
+                  notification_url: envs.notificationUrl
             }
 
-            const fetchResult = await fetch('https://api-sbx.dlocalgo.com/v1/payments', {
+            const fetchResult = await fetch(`${envs.createPaymentSessionUrl}`, {
                   method: 'POST',
                   headers: {
                         'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export class PaymentsService {
 
       async getById(id: string) {
 
-            const res = await fetch(`https://api-sbx.dlocalgo.com/v1/payments/${id}`, {
+            const res = await fetch(`${envs.getPaymentUrl}/${id}`, {
                   method: 'GET',
                   headers: {
                         'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ export class PaymentsService {
 
             const body = req.body
 
-            const fetchResult = await fetch(`https://api-sbx.dlocalgo.com/v1/payments/${body.payment_id}`, {
+            const fetchResult = await fetch(`${envs.getPaymentUrl}/${body.payment_id}`, {
                   method: 'GET',
                   headers: {
                         'Content-Type': 'application/json',
