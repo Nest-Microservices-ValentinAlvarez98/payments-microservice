@@ -6,6 +6,8 @@ interface EnvVars {
 
       PORT: number
 
+      NATS_SERVERS: string[],
+
       API_KEY: string
       SECRET_KEY: string
 
@@ -22,6 +24,8 @@ const envsSchema = joi.object({
 
       PORT: joi.number().required(),
 
+      NATS_SERVERS: joi.array().items(joi.string()).required(),
+
       API_KEY: joi.string().required(),
       SECRET_KEY: joi.string().required(),
 
@@ -34,7 +38,10 @@ const envsSchema = joi.object({
 
 }).unknown(true)
 
-const { error, value } = envsSchema.validate(process.env)
+const { error, value } = envsSchema.validate({
+      ...process.env,
+      NATS_SERVERS: process.env.NATS_SERVERS.split(',')
+})
 
 if (error) {
 
@@ -47,6 +54,8 @@ const envVars: EnvVars = value;
 export const envs = {
 
       port: envVars.PORT,
+
+      natsServers: envVars.NATS_SERVERS,
 
       apiKey: envVars.API_KEY,
       secretKey: envVars.SECRET_KEY,

@@ -1,3 +1,5 @@
 export * from './paymentSession.interface'
 export * from './paymentResponse.interface'
 export * from './paymentSessionResponse.interface'
+export * from './users/user-profile.interface'
+export * from './users/user-billAddress.interface'

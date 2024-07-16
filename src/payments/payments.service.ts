@@ -1,17 +1,27 @@
-import { Injectable } from '@nestjs/common';
-import { CreatePaymentDto } from './dto';
+import { HttpStatus, Inject, Injectable, Logger, } from '@nestjs/common';
 import { PaymentResponse, PaymentSession, PaymentSessionResponse } from './interfaces';
-import { envs } from 'src/config';
+import { NATS_SERVICE, envs } from 'src/config';
 import { Request, Response } from 'express';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { CreatePaymentSessionDto } from './dto';
+import { catchError, firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class PaymentsService {
 
-      async createPaymentSession(createPaymentDto: CreatePaymentDto) {
+      constructor(
+            @Inject(NATS_SERVICE) private readonly client: ClientProxy
+      ) {
+      }
+
+      private readonly logger = new Logger('PaymentsService')
+
+
+      async createPaymentSession(paymentId: string, createPaymentSessionDto: CreatePaymentSessionDto) {
 
             const paymentSession: PaymentSession = {
-                  ...createPaymentDto,
-                  success_url: envs.successUrl,
+                  ...createPaymentSessionDto,
+                  success_url: `${envs.successUrl}/${createPaymentSessionDto.order_id}`,
                   back_url: envs.backUrl,
                   notification_url: envs.notificationUrl
             }
@@ -25,13 +35,31 @@ export class PaymentsService {
                   body: JSON.stringify(paymentSession)
             })
 
+            if (fetchResult.status !== 200 && fetchResult.status !== 201) {
+
+                  throw new RpcException({
+                        message: `Error creating payment session `,
+                        statusCode: HttpStatus.INTERNAL_SERVER_ERROR
+                  })
+            }
+
             const data: PaymentSessionResponse = await fetchResult.json()
 
-            return data
+            const paymentSessionCreated = await firstValueFrom(this.client.send('orders.payment.sessionCreated', {
+                  payment_id: paymentId,
+                  dlocal_payment_id: data.id
+            }))
+
+
+            return {
+                  updatedPayment: paymentSessionCreated,
+                  paymentSession: data
+            }
 
       }
 
-      async getById(id: string) {
+
+      async dlocalGetById(id: string) {
 
             const res = await fetch(`${envs.getPaymentUrl}/${id}`, {
                   method: 'GET',
@@ -43,26 +71,11 @@ export class PaymentsService {
 
             const data: PaymentResponse = await res.json()
 
-            console.log(data)
-
-            switch (data.status) {
-                  case 'PAID':
-                        console.log('Conected to the order microservice to update the order status to PAID')
-                        break;
-                  case 'REJECTED':
-                        console.log('Conected to the order microservice to update the order status to REJECTED')
-                        break;
-                  case 'CANCELLED':
-                        console.log('Conected to the order microservice to update the order status to CANCELLED')
-                        break;
-                  case 'EXPIRED':
-                        console.log('Conected to the order microservice to update the order status to EXPIRED')
-                        break;
-                  default:
-                        return {
-                              error: true,
-                              message: 'Payment not found'
-                        }
+            if (res.status !== 200) {
+                  throw new RpcException({
+                        message: `Error fetching payment`,
+                        statusCode: HttpStatus.INTERNAL_SERVER_ERROR
+                  })
             }
 
             return data
@@ -83,31 +96,29 @@ export class PaymentsService {
 
             const data: PaymentResponse = await fetchResult.json()
 
-            let resultMessage = ""
-            switch (data.status) {
-                  case 'PAID':
-                        resultMessage = 'Conected to the order microservice to update the order status to PAID'
-                        break;
-                  case 'REJECTED':
-                        resultMessage = 'Conected to the order microservice to update the order status to REJECTED'
-                        break;
-                  case 'CANCELLED':
-                        resultMessage = 'Conected to the order microservice to update the order status to CANCELLED'
-                        break;
-                  case 'EXPIRED':
-                        resultMessage = 'Conected to the order microservice to update the order status to EXPIRED'
-                        break;
-                  default:
-                        return {
-                              error: true,
-                              message: 'Payment not found'
-                        }
+            if (data.status === 'PAID') {
+
+                  this.client.emit('orders.payment.succeeded', {
+                        order_id: data.order_id,
+                        orderStatus: data.status,
+                        payment_id: data.id,
+                        paymentStatus: data.status,
+                  })
+
+            } else {
+
+                  this.client.emit('orders.payment.failed', {
+                        order_id: data.order_id,
+                        orderStatus: 'CANCELLED',
+                        payment_id: data.id,
+                        paymentStatus: data.status,
+                  })
+
             }
 
             return res.status(200).json({
-                  message: resultMessage,
                   orderStatus: data.status,
-                  order_id: data.order_id
+                  order_id: data.order_id,
             })
 
       }
